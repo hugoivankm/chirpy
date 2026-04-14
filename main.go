@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -45,6 +46,63 @@ func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type Chirp struct {
+	Body string `json:"body"`
+}
+
+type ReturnValues struct {
+	Valid bool `json:"valid"`
+}
+
+func respondWithError(w http.ResponseWriter, code int, msg string) {
+
+	type error_struct struct {
+		Error_msg string `json:"error"`
+	}
+
+	error_json, err := json.Marshal(error_struct{Error_msg: msg})
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(code)
+		w.Write([]byte("\"error\":\"Something went wrong\""))
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write([]byte(error_json))
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(data)
+}
+
+func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	chirp := Chirp{}
+	err := decoder.Decode(&chirp)
+	if err != nil {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
+	if len(chirp.Body) > 140 {
+		respondWithError(w, 400, "Chirp is too long")
+		return
+	}
+
+	respondWithJSON(w, 200, ReturnValues{Valid: true})
+
+}
+
 func main() {
 
 	mux := http.NewServeMux()
@@ -58,6 +116,8 @@ func main() {
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
+
+	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",

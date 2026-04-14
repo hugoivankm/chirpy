@@ -21,10 +21,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-          cache: false 
+          cache: false
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          

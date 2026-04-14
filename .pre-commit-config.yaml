@@ -8,8 +8,6 @@ repos:
       - id: check-added-large-files
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.11.4
+    rev: v1.64.8
     hooks:
       - id: golangci-lint
-        args: [--config=.golangci.yml]
-        

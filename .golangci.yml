@@ -1,0 +1,20 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck    # Checks for unchecked errors
+    - gosimple    # Suggests code simplifications
+    - govet       # Reports suspicious constructs (e.g. printf formatting)
+    - ineffassign # Detects unused assignments
+    - staticcheck # High-quality static analysis
+    - unused      # Finds unused constants, variables, types and functions
+    - revive      # Highly configurable linter (replacement for golint)
+    - goimports   # Checks import formatting
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

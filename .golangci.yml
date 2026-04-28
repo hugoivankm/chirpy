@@ -12,6 +12,7 @@ linters:
     - ineffassign # Detects unused assignments
     - staticcheck # High-quality static analysis
     - unused      # Finds unused constants, variables, types and functions
+    - revive      # Highly configurable linter (replacement for golint)
     - goimports   # Checks import formatting
 
 issues:  

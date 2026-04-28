@@ -34,11 +34,15 @@ type apiConfig struct {
 }
 
 type Chirp struct {
-	Body string `json:"body"`
+	Id        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserId    uuid.UUID `json:"user_id"`
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
+	Id        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
@@ -130,25 +134,48 @@ func replaceProfaneWords(words string) string {
 	return strings.Join(w, " ")
 }
 
-func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
-	type ReturnValues struct {
-		CleanedBody string `json:"cleaned_body"`
+func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
+
+	type parameters struct {
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	chirp := Chirp{}
-	err := decoder.Decode(&chirp)
+	params := parameters{}
+	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		respondWithError(w, http.StatusBadRequest, "Unable to decode chirp")
 		return
 	}
 
-	if len(chirp.Body) > maxChirpLength {
+	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, ReturnValues{CleanedBody: replaceProfaneWords(chirp.Body)})
+	cleaned_body := replaceProfaneWords(params.Body)
+
+	args := database.CreateChirpParams{
+		Body:   cleaned_body,
+		UserID: params.UserID,
+	}
+
+	newChirp, err := cfg.db.CreateChirp(r.Context(), args)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp")
+		return
+	}
+
+	chirp := Chirp{
+		Id:        newChirp.ID,
+		CreatedAt: newChirp.CreatedAt,
+		UpdatedAt: newChirp.UpdatedAt,
+		Body:      newChirp.Body,
+		UserId:    newChirp.UserID,
+	}
+
+	respondWithJSON(w, http.StatusCreated, chirp)
 
 }
 
@@ -175,22 +202,13 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	user := User{
-		ID:        userFromDb.ID,
-		CreatedAt: userFromDb.CreatedAt.Time,
-		UpdatedAt: userFromDb.UpdatedAt.Time,
+		Id:        userFromDb.ID,
+		CreatedAt: userFromDb.CreatedAt,
+		UpdatedAt: userFromDb.UpdatedAt,
 		Email:     userFromDb.Email,
 	}
 
-	data, err := json.Marshal(user)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(data)
-
+	respondWithJSON(w, http.StatusCreated, user)
 }
 
 func main() {
@@ -225,8 +243,8 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
 
 	mux.HandleFunc("GET /api/healthz", readinessHandler)
-	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
+	mux.HandleFunc("POST /api/chirps", apiCfg.chirpsHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",

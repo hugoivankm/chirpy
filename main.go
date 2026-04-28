@@ -67,13 +67,13 @@ func readinessHandler(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(fmt.Sprintf(`
+	_, err := fmt.Fprintf(w, `
 	<html>
   	  <body>
         <h1>Welcome, Chirpy Admin</h1>
         <p>Chirpy has been visited %d times!</p>
      </body>
-    </html>`, cfg.fileserverHits.Load())))
+    </html>`, cfg.fileserverHits.Load())
 
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
@@ -124,7 +124,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func isProfaneWord(word string) bool {
